@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.6.5'
+    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+}
+
+group 'ws.logv'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven {
+        url = 'https://projects.itemis.de/nexus/content/repositories/mbeddr'
+    }
+}
+
+def mpsVersion = "2020.1.7"
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    compileOnly "com.jetbrains:mps-openapi:$mpsVersion"
+    compileOnly "com.jetbrains:mps-platform:$mpsVersion"
+    compileOnly "com.jetbrains:mps-workbench:$mpsVersion"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version '2019.3'
+    plugins 'jetbrains.mps.core:2019.3.6'
+    pluginsRepo { marketplace() }
+}
+
+
+
+patchPluginXml {
+    changeNotes """
+      Add change notes here.<br>
+      <em>most HTML tags may be used</em>"""
+    untilBuild(null)
+}
+test {
+    useJUnitPlatform()
+}
