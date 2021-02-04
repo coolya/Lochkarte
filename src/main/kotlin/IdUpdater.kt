@@ -1,7 +1,6 @@
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.mps.extapi.model.SModelBase
 import jetbrains.mps.ide.newModuleDialogs.CopyModuleHelper
-import jetbrains.mps.lang.migration.runtime.base.RefactoringRuntime
 import jetbrains.mps.lang.smodel.generator.smodelAdapter.SConceptOperations
 import jetbrains.mps.lang.smodel.generator.smodelAdapter.SNodeOperations
 import jetbrains.mps.module.ModuleDeleteHelper
@@ -16,14 +15,18 @@ import jetbrains.mps.smodel.adapter.structure.concept.SConceptAdapterById
 import jetbrains.mps.smodel.adapter.structure.link.SContainmentLinkAdapterById
 import jetbrains.mps.smodel.adapter.structure.property.SPropertyAdapterById
 import jetbrains.mps.smodel.adapter.structure.ref.SReferenceLinkAdapterById
+import org.jetbrains.mps.openapi.model.SModelId
+import org.jetbrains.mps.openapi.model.SModelReference
 import kotlin.test.fail
 
-val logger = Logger.getInstance("ws.logv.Fernsprecher.updateIds")
+val logger = Logger.getInstance("ws.logv.Lochkarte.updateIds")
 
 fun updateIds(project: Project) {
     val replacedModules = mutableListOf<String>()
     val replacedModels = mutableListOf<String>()
-    val replacedLanguages = hashMapOf<String, Language>()
+    val languageSubstitutes = hashMapOf<String, Language>()
+    val modelSubstitutes = hashMapOf<SModelId, SModelReference>()
+
     val mpsProject = project as StandaloneMPSProject
     project.projectModules.forEach { sModule ->
         logger.info("updating module: ${sModule.moduleName}")
@@ -32,13 +35,21 @@ fun updateIds(project: Project) {
             val folder = project.getFolderFor(sModule)
             replacedModules.add(moduleName)
             replacedModels.addAll(sModule.models.map { it.reference.modelName })
-            val module = cloneModule(sModule as AbstractModule, mpsProject)!!
+            val newModule = cloneModule(sModule as AbstractModule, mpsProject)!!
+            sModule.models.forEach { oldModel ->
+                val substitute = newModule.models.find { it.name.simpleName == oldModel.name.simpleName }
+                if (substitute == null) {
+                    logger.warn("can't find substitute for model: ${oldModel.name}")
+                } else {
+                    modelSubstitutes[oldModel.modelId] = substitute.reference
+                }
+            }
             logger.info("deleting original modules")
             deleteModule(sModule, mpsProject)
             logger.info("renaming module copy")
             @Suppress("DEPRECATION")
-            Renamer.renameModule(module, moduleName, mpsProject)
-            project.setFolderFor(module, folder)
+            Renamer.renameModule(newModule, moduleName, mpsProject)
+            project.setFolderFor(newModule, folder)
         } catch (t: Throwable) {
             logger.error("error updating module ${sModule.moduleName}", t)
         }
@@ -84,7 +95,7 @@ fun updateIds(project: Project) {
             }
         }
         if (module is Language) {
-            replacedLanguages[module.moduleName!!] = module
+            languageSubstitutes[module.moduleName!!] = module
             logger.info("updating runtime models for language: ${module.moduleName}")
             val languageDescriptor = module.moduleDescriptor
             languageDescriptor.runtimeModules.filter { replacedModules.contains(it.moduleName) }.forEach { reference ->
@@ -100,8 +111,22 @@ fun updateIds(project: Project) {
         }
     }
     project.projectModels.forEach { model ->
-        model.rootNodes.forEach { updateNode(replacedLanguages, it) }
+        model.rootNodes.forEach { updateNode(languageSubstitutes, it) }
+        model.rootNodes.forEach { updateReferences(modelSubstitutes, it) }
     }
+}
+
+fun updateReferences(
+    modelSubstitutes: HashMap<SModelId, SModelReference>,
+    node: org.jetbrains.mps.openapi.model.SNode
+) {
+    node.references.filterIsInstance<StaticReference>().forEach {
+        val substitute = modelSubstitutes[it.targetSModelReference?.modelId]
+        if (substitute != null) {
+            it.setTargetSModelReference(substitute)
+        }
+    }
+    node.children.forEach { child -> updateReferences(modelSubstitutes, child) }
 }
 
 fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains.mps.openapi.model.SNode) {
@@ -113,7 +138,8 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
         when (val concept = node.concept) {
             is SConceptAdapterById -> {
 
-                val sConcept = MetaAdapterFactory.getConcept(slang, concept.id.idValue, concept.name) as SConceptAdapterById
+                val sConcept =
+                    MetaAdapterFactory.getConcept(slang, concept.id.idValue, concept.name) as SConceptAdapterById
                 val newInstance =
                     SConceptOperations.createNewNode(SNodeOperations.asInstanceConcept(sConcept)) as SNode
                 newInstance.setId((node as SNode).nodeId)
@@ -134,7 +160,7 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
                 node.children.forEach { child ->
                     when (val oldLink = child.containmentLink) {
                         is SContainmentLinkAdapterById -> {
-                            val newLink = if(oldLink.id.conceptId.idValue == sConcept.id.idValue) {
+                            val newLink = if (oldLink.id.conceptId.idValue == sConcept.id.idValue) {
                                 MetaAdapterFactory.getContainmentLink(sConcept, oldLink.id.idValue, oldLink.name)
                             } else {
                                 oldLink
@@ -149,7 +175,7 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
                 node.references.forEach { oldReference ->
                     when (val oldLink = oldReference.link) {
                         is SReferenceLinkAdapterById -> {
-                            val newLink = if(oldLink.id.conceptId.idValue == sConcept.id.idValue) {
+                            val newLink = if (oldLink.id.conceptId.idValue == sConcept.id.idValue) {
                                 MetaAdapterFactory.getReferenceLink(sConcept, oldLink.id.idValue, oldLink.name)
                             } else {
                                 oldLink
