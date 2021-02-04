@@ -109,18 +109,22 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
 
     val l = replacedLanguages[node.concept.language.qualifiedName]
     if (l != null) {
+        val slang = MetaAdapterFactory.getLanguage(l.moduleReference)
         when (val concept = node.concept) {
             is SConceptAdapterById -> {
-                val slang = MetaAdapterFactory.getLanguage(l.moduleReference)
-                val sConcept = MetaAdapterFactory.getConcept(slang, concept.id.idValue, concept.name)
+
+                val sConcept = MetaAdapterFactory.getConcept(slang, concept.id.idValue, concept.name) as SConceptAdapterById
                 val newInstance =
                     SConceptOperations.createNewNode(SNodeOperations.asInstanceConcept(sConcept)) as SNode
                 newInstance.setId((node as SNode).nodeId)
                 node.properties.forEach { oldProperty ->
                     when (oldProperty) {
                         is SPropertyAdapterById -> {
-                            val sProperty =
+                            val sProperty = if (oldProperty.id.conceptId.idValue == sConcept.id.idValue) {
                                 MetaAdapterFactory.getProperty(sConcept, oldProperty.id.idValue, oldProperty.name)
+                            } else {
+                                oldProperty
+                            }
                             newInstance.setProperty(sProperty, node.getProperty(oldProperty))
                         }
                         else -> logger.error("unknown property type ${oldProperty.javaClass}")
@@ -130,8 +134,11 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
                 node.children.forEach { child ->
                     when (val oldLink = child.containmentLink) {
                         is SContainmentLinkAdapterById -> {
-                            val newLink =
+                            val newLink = if(oldLink.id.conceptId.idValue == sConcept.id.idValue) {
                                 MetaAdapterFactory.getContainmentLink(sConcept, oldLink.id.idValue, oldLink.name)
+                            } else {
+                                oldLink
+                            }
                             node.removeChild(child)
                             newInstance.addChild(newLink, child)
                         }
@@ -142,8 +149,11 @@ fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains
                 node.references.forEach { oldReference ->
                     when (val oldLink = oldReference.link) {
                         is SReferenceLinkAdapterById -> {
-                            val newLink =
+                            val newLink = if(oldLink.id.conceptId.idValue == sConcept.id.idValue) {
                                 MetaAdapterFactory.getReferenceLink(sConcept, oldLink.id.idValue, oldLink.name)
+                            } else {
+                                oldLink
+                            }
 
                             newInstance.setReference(
                                 newLink,
