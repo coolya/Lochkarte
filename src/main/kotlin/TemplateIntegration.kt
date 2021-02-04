@@ -56,6 +56,15 @@ class FromLocalFileSource : OtherProjectTemplate {
         return settings
     }
 
+    private fun checkTemplate(): String? {
+        //check if runtime or sandbox solution is in the language folder
+        return null
+    }
+
+    override fun checkSettings(): String? {
+        return checkTemplate()
+    }
+
     override fun getTemplateFiller(): TemplateFiller {
         return TemplateFiller { project ->
             val startupManager = StartupManager.getInstance(project.project)
@@ -153,6 +162,7 @@ class FromLocalFileSource : OtherProjectTemplate {
 
 class LocalSourceSettings : JPanel(GridBagLayout()) {
     private val templateLocation = JTextField()
+
 
     init {
         this.add(JLabel("Template Location:"), 0, 0.0)
