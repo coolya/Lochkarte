@@ -8,6 +8,7 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.FieldPanel
 import com.intellij.ui.InsertPathAction
 import com.intellij.util.ui.JBUI
+import jetbrains.mps.project.AbstractModule
 import jetbrains.mps.project.MPSExtentions
 import jetbrains.mps.project.StandaloneMPSProject
 import jetbrains.mps.project.structure.project.ModulePath
@@ -15,6 +16,10 @@ import jetbrains.mps.workbench.dialogs.project.newproject.MPSProjectTemplate
 import jetbrains.mps.workbench.dialogs.project.newproject.OtherProjectTemplate
 import jetbrains.mps.workbench.dialogs.project.newproject.ProjectTemplatesGroup
 import jetbrains.mps.workbench.dialogs.project.newproject.TemplateFiller
+import org.jetbrains.mps.openapi.module.SModule
+import org.jetbrains.mps.openapi.module.SModuleReference
+import org.jetbrains.mps.openapi.module.SRepository
+import org.jetbrains.mps.openapi.module.SRepositoryListener
 import java.awt.Component
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -43,17 +48,19 @@ class FromLocalFileSource : OtherProjectTemplate {
         return "From Local Template"
     }
 
-    override fun getDescription(): String? {
+    override fun getDescription(): String {
         return "Creates a new project from a local template."
     }
 
-    override fun getSettings(): JComponent? {
+    override fun getSettings(): JComponent {
         return settings
     }
 
     override fun getTemplateFiller(): TemplateFiller {
         return TemplateFiller { project ->
-            StartupManager.getInstance(project.project).registerPostStartupActivity {
+            val startupManager = StartupManager.getInstance(project.project)
+            val minedModulePaths = mutableListOf<ModulePath>()
+            startupManager.registerPreStartupActivity {
                 project.modelAccess.executeCommand {
                     val templateLocationPath = settings.templateLocationPath
                     val projectRoot = project.projectFile
@@ -79,10 +86,60 @@ class FromLocalFileSource : OtherProjectTemplate {
                     projectRoot.walk()
                         .filter { !it.isDirectory && it.extension.isNotEmpty() && extensions.contains(it.extension.toLowerCase()) }
                         .forEach {
-                            (project as StandaloneMPSProject).projectDescriptor.addModulePath(ModulePath(it.path, null))
+                            val modulePath = ModulePath(it.path, null)
+                            minedModulePaths.add(modulePath)
+                            (project as StandaloneMPSProject).projectDescriptor.addModulePath(modulePath)
                         }
+                    project.repository.addRepositoryListener(object: SRepositoryListener {
+                        override fun moduleAdded(module: SModule) {
+
+                            if(module is AbstractModule) {
+                                minedModulePaths.removeIf { it.path == module.descriptorFile?.path }
+                            }
+
+                            if(minedModulePaths.isEmpty()) {
+                                project.repository.removeRepositoryListener(this)
+                                project.modelAccess.runWriteAction {
+                                    project.modelAccess.executeCommandInEDT {
+                                        updateIds(project)
+                                    }
+                                }
+                            }
+                        }
+
+                        override fun beforeModuleRemoved(module: SModule) {
+                            //noop
+                        }
+
+                        override fun moduleRemoved(module: SModuleReference) {
+                            //noop
+                        }
+
+                        override fun commandStarted(repository: SRepository?) {
+                            //noop
+                        }
+
+                        override fun commandFinished(repository: SRepository?) {
+                            //noop
+                        }
+
+                        override fun updateStarted(repository: SRepository?) {
+                            //noop
+                        }
+
+                        override fun updateFinished(repository: SRepository?) {
+                            //noop
+                        }
+
+                        override fun repositoryCommandStarted(repository: SRepository?) {
+                            //noop
+                        }
+
+                        override fun repositoryCommandFinished(repository: SRepository?) {
+                            //noop
+                        }
+                    })
                     (project as StandaloneMPSProject).update()
-                    updateIds(project)
                 }
             }
         }
