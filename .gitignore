@@ -17,3 +17,4 @@ junit*.properties
 /build/*
 /.gradle
 .gradletasknamecache
+out/
