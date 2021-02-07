@@ -1,3 +1,4 @@
+package ws.logv.lochkarte.template
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.mps.extapi.model.SModelBase
 import jetbrains.mps.ide.newModuleDialogs.CopyModuleHelper
@@ -19,7 +20,7 @@ import org.jetbrains.mps.openapi.model.SModelId
 import org.jetbrains.mps.openapi.model.SModelReference
 import kotlin.test.fail
 
-val logger = Logger.getInstance("ws.logv.Lochkarte.updateIds")
+val logger = Logger.getInstance("ws.logv.lochkarte.template.updateIds")
 
 fun updateIds(project: Project) {
     val replacedModules = mutableListOf<String>()

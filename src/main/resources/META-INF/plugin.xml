@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>ws.logv.Lochkarte</id>
+    <id>ws.logv.lochkarte</id>
     <name>Lochkarte</name>
     <vendor email="kolja.dummann@logv.ws" url="https://logv.ws">Kolja Dummann</vendor>
 
@@ -14,7 +14,7 @@
 
     <extensions defaultExtensionNs="com.intellij.mps">
         <!-- Add your extensions here -->
-        <otherProjectTemplateEP implementation="FromLocalFileSource"/>
+        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.FromLocalFileSource"/>
     </extensions>
 
     <actions>

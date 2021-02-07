@@ -1,3 +1,5 @@
+package ws.logv.lochkarte.template
+
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.BrowseFilesListener
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
