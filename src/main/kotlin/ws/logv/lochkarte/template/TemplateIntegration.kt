@@ -30,18 +30,8 @@ import java.io.File
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 
-class FromTemplateGroup : ProjectTemplatesGroup {
-    override fun getName(): String {
-        return "From Template"
-    }
-
-    override fun getTemplates(): MutableCollection<MPSProjectTemplate> {
-        TODO("Not yet implemented")
-    }
-}
-
 class FromLocalFileSource : OtherProjectTemplate {
-    private val settings = LocalSourceSettings()
+    private val settings = LocalSourceSettings { this.fireSettingsChanged() }
     override fun getIcon(): Icon? {
         return AllIcons.Nodes.IdeaProject
     }
@@ -59,7 +49,11 @@ class FromLocalFileSource : OtherProjectTemplate {
     }
 
     private fun checkTemplate(): String? {
-        //check if runtime or sandbox solution is in the language folder
+        val locationPath = settings.templateLocationPath
+        val location = File(locationPath)
+        if (location.exists()) {
+            return ws.logv.lochkarte.helper.checkTemplate(location).joinToString("\n")
+        }
         return null
     }
 
@@ -162,7 +156,7 @@ class FromLocalFileSource : OtherProjectTemplate {
 
 }
 
-class LocalSourceSettings : JPanel(GridBagLayout()) {
+class LocalSourceSettings(changeListener: () -> Unit) : JPanel(GridBagLayout()) {
     private val templateLocation = JTextField()
 
 
@@ -171,7 +165,7 @@ class LocalSourceSettings : JPanel(GridBagLayout()) {
         templateLocation.text = "Path"
         templateLocation.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
-
+                changeListener()
             }
         })
 
