@@ -1,4 +1,4 @@
-package ws.logv.lochkarte.template
+package ws.logv.lochkarte.template.local
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.mps.extapi.model.SModelBase
 import jetbrains.mps.ide.newModuleDialogs.CopyModuleHelper
@@ -20,7 +20,7 @@ import org.jetbrains.mps.openapi.model.SModelId
 import org.jetbrains.mps.openapi.model.SModelReference
 import kotlin.test.fail
 
-val logger = Logger.getInstance("ws.logv.lochkarte.template.updateIds")
+private val logger = Logger.getInstance("ws.logv.lochkarte.template.updateIds")
 
 fun updateIds(project: Project) {
     val replacedModules = mutableListOf<String>()
@@ -117,7 +117,7 @@ fun updateIds(project: Project) {
     }
 }
 
-fun updateReferences(
+private fun updateReferences(
     modelSubstitutes: HashMap<SModelId, SModelReference>,
     node: org.jetbrains.mps.openapi.model.SNode
 ) {
@@ -130,7 +130,7 @@ fun updateReferences(
     node.children.forEach { child -> updateReferences(modelSubstitutes, child) }
 }
 
-fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains.mps.openapi.model.SNode) {
+private fun updateNode(replacedLanguages: HashMap<String, Language>, node: org.jetbrains.mps.openapi.model.SNode) {
     node.children.forEach { updateNode(replacedLanguages, it) }
 
     val l = replacedLanguages[node.concept.language.qualifiedName]

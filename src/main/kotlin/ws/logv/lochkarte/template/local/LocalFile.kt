@@ -1,4 +1,4 @@
-package ws.logv.lochkarte.template
+package ws.logv.lochkarte.template.local
 
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.BrowseFilesListener
@@ -41,7 +41,10 @@ class FromLocalFileSource : OtherProjectTemplate {
     }
 
     override fun getDescription(): String {
-        return "Creates a new project from a local template."
+        return """Creates a new project from a local template.
+            |
+            |For more information on how templates work see the <a href="https://github.com/coolya/Lochkarte#templates"> documentation </a>
+        """.trimMargin()
     }
 
     override fun getSettings(): JComponent {
@@ -52,7 +55,7 @@ class FromLocalFileSource : OtherProjectTemplate {
         val locationPath = settings.templateLocationPath
         val location = File(locationPath)
         if (location.exists()) {
-            return ws.logv.lochkarte.helper.checkTemplate(location).joinToString("\n")
+            return "Template not compatible: \n" + ws.logv.lochkarte.helper.checkTemplate(location).joinToString("\n")
         }
         return null
     }
@@ -62,13 +65,13 @@ class FromLocalFileSource : OtherProjectTemplate {
     }
 
     override fun getTemplateFiller(): TemplateFiller {
-        return TemplateFiller { project ->
-            val startupManager = StartupManager.getInstance(project.project)
+        return TemplateFiller { mpsProject ->
+            val startupManager = StartupManager.getInstance(mpsProject.project)
             val minedModulePaths = mutableListOf<ModulePath>()
             startupManager.registerPreStartupActivity {
-                project.modelAccess.executeCommand {
+                mpsProject.modelAccess.executeCommand {
                     val templateLocationPath = settings.templateLocationPath
-                    val projectRoot = project.projectFile
+                    val projectRoot = mpsProject.projectFile
                     val templateRoot = File(templateLocationPath)
                     templateRoot.walk().forEach {
                         if (it.path.contains(File.separator + ".git" + File.separator)
@@ -93,9 +96,9 @@ class FromLocalFileSource : OtherProjectTemplate {
                         .forEach {
                             val modulePath = ModulePath(it.path, null)
                             minedModulePaths.add(modulePath)
-                            (project as StandaloneMPSProject).projectDescriptor.addModulePath(modulePath)
+                            (mpsProject as StandaloneMPSProject).projectDescriptor.addModulePath(modulePath)
                         }
-                    project.repository.addRepositoryListener(object: SRepositoryListener {
+                    mpsProject.repository.addRepositoryListener(object: SRepositoryListener {
                         override fun moduleAdded(module: SModule) {
 
                             if(module is AbstractModule) {
@@ -103,10 +106,11 @@ class FromLocalFileSource : OtherProjectTemplate {
                             }
 
                             if(minedModulePaths.isEmpty()) {
-                                project.repository.removeRepositoryListener(this)
-                                project.modelAccess.runWriteAction {
-                                    project.modelAccess.executeCommandInEDT {
-                                        updateIds(project)
+                                mpsProject.repository.removeRepositoryListener(this)
+                                mpsProject.modelAccess.runWriteAction {
+                                    mpsProject.modelAccess.executeCommandInEDT {
+                                        replaceMacros(mpsProject.project)
+                                        updateIds(mpsProject)
                                     }
                                 }
                             }
@@ -144,7 +148,7 @@ class FromLocalFileSource : OtherProjectTemplate {
                             //noop
                         }
                     })
-                    (project as StandaloneMPSProject).update()
+                    (mpsProject as StandaloneMPSProject).update()
                 }
             }
         }

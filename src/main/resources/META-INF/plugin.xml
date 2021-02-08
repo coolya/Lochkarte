@@ -14,10 +14,15 @@
 
     <extensions defaultExtensionNs="com.intellij.mps">
         <!-- Add your extensions here -->
-        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.FromLocalFileSource"/>
+        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.local.FromLocalFileSource"/>
     </extensions>
 
     <actions>
         <!-- Add your actions here -->
+        <action id="ws.logv.lochkarte.ide.checkProject" class="ws.logv.lochkarte.ide.CheckProjectAction"
+                text="Check Project for Template Compatability"
+                description="Checks if the current project is usable as a template">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
     </actions>
 </idea-plugin>
