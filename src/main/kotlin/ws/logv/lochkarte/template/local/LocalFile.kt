@@ -12,6 +12,7 @@ import com.intellij.ui.InsertPathAction
 import com.intellij.util.ui.JBUI
 import jetbrains.mps.project.AbstractModule
 import jetbrains.mps.project.MPSExtentions
+import jetbrains.mps.project.MPSProject
 import jetbrains.mps.project.StandaloneMPSProject
 import jetbrains.mps.project.structure.project.ModulePath
 import jetbrains.mps.workbench.dialogs.project.newproject.MPSProjectTemplate
@@ -22,6 +23,9 @@ import org.jetbrains.mps.openapi.module.SModule
 import org.jetbrains.mps.openapi.module.SModuleReference
 import org.jetbrains.mps.openapi.module.SRepository
 import org.jetbrains.mps.openapi.module.SRepositoryListener
+import ws.logv.lochkarte.template.fillProject
+import ws.logv.lochkarte.template.replaceMacros
+import ws.logv.lochkarte.template.updateIds
 import java.awt.Component
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -30,7 +34,7 @@ import java.io.File
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 
-class FromLocalFileSource : OtherProjectTemplate {
+class LocalFileSourceTemplate : OtherProjectTemplate {
     private val settings = LocalSourceSettings { this.fireSettingsChanged() }
     override fun getIcon(): Icon? {
         return AllIcons.Nodes.IdeaProject
@@ -66,91 +70,7 @@ class FromLocalFileSource : OtherProjectTemplate {
 
     override fun getTemplateFiller(): TemplateFiller {
         return TemplateFiller { mpsProject ->
-            val startupManager = StartupManager.getInstance(mpsProject.project)
-            val minedModulePaths = mutableListOf<ModulePath>()
-            startupManager.registerPreStartupActivity {
-                mpsProject.modelAccess.executeCommand {
-                    val templateLocationPath = settings.templateLocationPath
-                    val projectRoot = mpsProject.projectFile
-                    val templateRoot = File(templateLocationPath)
-                    templateRoot.walk().forEach {
-                        if (it.path.contains(File.separator + ".git" + File.separator)
-                            || it.isMpsProjectFile("modules.xml")
-                            || it.isMpsProjectFile("workspace.xml")
-                            || it.isDirectory
-                        ) {
-                            return@forEach
-                        }
-
-                        it.copyTo(File(projectRoot, it.toRelativeString(templateRoot)))
-                    }
-
-                    val extensions = listOf(
-                        MPSExtentions.DEVKIT,
-                        MPSExtentions.GENERATOR,
-                        MPSExtentions.LANGUAGE,
-                        MPSExtentions.SOLUTION
-                    )
-                    projectRoot.walk()
-                        .filter { !it.isDirectory && it.extension.isNotEmpty() && extensions.contains(it.extension.toLowerCase()) }
-                        .forEach {
-                            val modulePath = ModulePath(it.path, null)
-                            minedModulePaths.add(modulePath)
-                            (mpsProject as StandaloneMPSProject).projectDescriptor.addModulePath(modulePath)
-                        }
-                    mpsProject.repository.addRepositoryListener(object: SRepositoryListener {
-                        override fun moduleAdded(module: SModule) {
-
-                            if(module is AbstractModule) {
-                                minedModulePaths.removeIf { it.path == module.descriptorFile?.path }
-                            }
-
-                            if(minedModulePaths.isEmpty()) {
-                                mpsProject.repository.removeRepositoryListener(this)
-                                mpsProject.modelAccess.runWriteAction {
-                                    mpsProject.modelAccess.executeCommandInEDT {
-                                        replaceMacros(mpsProject.project)
-                                        updateIds(mpsProject)
-                                    }
-                                }
-                            }
-                        }
-
-                        override fun beforeModuleRemoved(module: SModule) {
-                            //noop
-                        }
-
-                        override fun moduleRemoved(module: SModuleReference) {
-                            //noop
-                        }
-
-                        override fun commandStarted(repository: SRepository?) {
-                            //noop
-                        }
-
-                        override fun commandFinished(repository: SRepository?) {
-                            //noop
-                        }
-
-                        override fun updateStarted(repository: SRepository?) {
-                            //noop
-                        }
-
-                        override fun updateFinished(repository: SRepository?) {
-                            //noop
-                        }
-
-                        override fun repositoryCommandStarted(repository: SRepository?) {
-                            //noop
-                        }
-
-                        override fun repositoryCommandFinished(repository: SRepository?) {
-                            //noop
-                        }
-                    })
-                    (mpsProject as StandaloneMPSProject).update()
-                }
-            }
+            fillProject(mpsProject, settings.templateLocationPath)
         }
     }
 
@@ -208,5 +128,4 @@ class LocalSourceSettings(changeListener: () -> Unit) : JPanel(GridBagLayout()) 
     }
 }
 
-private fun File.isMpsProjectFile(name: String) = this.path.contains(File.separator + ".mps" + File.separator + name)
 

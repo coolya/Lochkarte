@@ -1,4 +1,4 @@
-package ws.logv.lochkarte.template.local
+package ws.logv.lochkarte.template
 
 import com.ibm.icu.text.CharsetDetector
 import com.intellij.openapi.project.Project

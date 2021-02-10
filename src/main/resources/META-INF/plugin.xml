@@ -14,7 +14,8 @@
 
     <extensions defaultExtensionNs="com.intellij.mps">
         <!-- Add your extensions here -->
-        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.local.FromLocalFileSource"/>
+        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.local.LocalFileSourceTemplate"/>
+        <otherProjectTemplateEP implementation="ws.logv.lochkarte.template.github.GithubSourceTemplate"/>
     </extensions>
 
     <actions>

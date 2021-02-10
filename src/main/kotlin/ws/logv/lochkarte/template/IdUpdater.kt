@@ -1,4 +1,4 @@
-package ws.logv.lochkarte.template.local
+package ws.logv.lochkarte.template
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.mps.extapi.model.SModelBase
 import jetbrains.mps.ide.newModuleDialogs.CopyModuleHelper

@@ -15,6 +15,8 @@ Templates are just normal MPS projects. You don't need to do anything special to
 - `workspace.xml` contains the state of the project e.g. open editors etc. we can't copy them.
 - `modules.xml` contains the content of the project, we will create a new one as part of the project creation.
 
+### Hosted Templates
+
 ### Macros
 
 The plugin has very basic support for using macros within the template. Macros are replaced with their value after the
