@@ -15,6 +15,7 @@ import org.jetbrains.mps.openapi.module.SRepository
 import org.jetbrains.mps.openapi.module.SRepositoryListener
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 
 fun fillProject(mpsProject: MPSProject, templateLocation: String) {
@@ -115,18 +116,19 @@ private enum class BitMaskFilePermission(private val mask: Int) {
     }
 }
 
-fun extractArchive(archive: File, destination: File, logger: Logger) {
+fun extractArchive(archive: File, destination: File, logger: Logger? = null) {
 
     val gzipCompressorInputStream = GzipCompressorInputStream(archive.inputStream())
     val tarArchiveInputStream = TarArchiveInputStream(gzipCompressorInputStream)
     var entry = tarArchiveInputStream.nextTarEntry
     while (entry != null) {
-
         if (entry.isDirectory) {
             val directory = File(destination, entry.name)
             val created = directory.mkdirs()
             if (!created) {
-                logger.error("can't create file: ${directory.path}")
+                logger?.error("can't create file: ${directory.path}")
+                entry = tarArchiveInputStream.nextTarEntry
+                continue
             }
             val mode = entry.mode
             val permissions =
@@ -134,11 +136,16 @@ fun extractArchive(archive: File, destination: File, logger: Logger) {
             Files.setPosixFilePermissions(directory.toPath(), HashSet(permissions))
         } else {
             val file = File(destination, entry.name)
-            val created = file.parentFile.mkdirs()
-            if (!created) {
-                logger.error("can't create file: ${file.parentFile.path}")
-                continue
+            val parentFile = file.parentFile
+            if(!parentFile.exists()) {
+                val created = parentFile.mkdirs()
+                if (!created) {
+                    logger?.error("can't create file: ${parentFile.path}")
+                    entry = tarArchiveInputStream.nextTarEntry
+                    continue
+                }
             }
+
             Files.write(file.toPath(), tarArchiveInputStream.readAllBytes())
             val mode = entry.mode
             val permissions =

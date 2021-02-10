@@ -18,3 +18,4 @@ junit*.properties
 /.gradle
 .gradletasknamecache
 out/
+.DS_Store

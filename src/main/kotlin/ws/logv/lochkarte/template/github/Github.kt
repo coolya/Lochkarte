@@ -7,6 +7,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.ui.DocumentAdapter
 import com.intellij.util.io.HttpRequests
 import com.intellij.util.ui.JBUI
+import jetbrains.mps.project.MPSProject
 import jetbrains.mps.workbench.dialogs.project.newproject.OtherProjectTemplate
 import jetbrains.mps.workbench.dialogs.project.newproject.TemplateFiller
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
@@ -63,30 +64,29 @@ class GithubSourceTemplate : OtherProjectTemplate {
                     is CheckResult.Success -> checkResult.url
                 }
 
-                val archive = Files.createTempFile(mpsProject.name, "tar.gz").toFile()
+                val archive: File
                 try {
-                    HttpRequests.request(url).productNameAsUserAgent().saveToFile(archive, null)
+                    archive = download(mpsProject.name, url)
                 } catch (e: IOException) {
                     Messages.showErrorDialog(
                         mpsProject.project, """Error downloading template: 
-                    |${e.message}
-                    | 
-                    |Make sure your link points to a repository on Github/ Github Enterprise.
-                    |Authentication to Github is not supported. See the documentation for more 
-                    |details and troubleshooting help visit the <a href="https://github.com/coolya/Lochkarte#hosted-templates">documentation</a>.
-                    |
-                    |Only an empty project has been created.""".trimMargin(), "Error Downloading Template"
+                        |${e.message}
+                        | 
+                        |Make sure your link points to a repository on Github/ Github Enterprise.
+                        |Authentication to Github is not supported. See the documentation for more 
+                        |details and troubleshooting help visit the <a href="https://github.com/coolya/Lochkarte#hosted-templates">documentation</a>.
+                        |
+                        |Only an empty project has been created.""".trimMargin(), "Error Downloading Template"
                     )
                     return@registerStartupActivity
                 }
+
                 val tempDirectory = Files.createTempDirectory("template").toFile()
                 extractArchive(archive, tempDirectory, logger)
-                fillProject(mpsProject, tempDirectory.path)
+                fillProject(mpsProject, tempDirectory.listFiles()!!.first().path)
             }
         }
     }
-
-
 
     override fun checkSettings(): String? {
         // ideally we would like to probe the url here to check if the url is indeed a
@@ -108,12 +108,12 @@ class GithubSourceTemplate : OtherProjectTemplate {
     }
 }
 
-private sealed class CheckResult {
-    class Success(val url: String) : CheckResult()
-    class Error(val message: String) : CheckResult()
+sealed class CheckResult {
+    data class Success(val url: String) : CheckResult()
+    data class Error(val message: String) : CheckResult()
 }
 
-private fun checkUrl(url: String): CheckResult {
+fun checkUrl(url: String): CheckResult {
     val parsedUrl = try {
         URL(url)
     } catch (e: MalformedURLException) {
@@ -128,11 +128,17 @@ private fun checkUrl(url: String): CheckResult {
     // third segment is ignored, the fourth is usually the branch name.
     return if (pathSegments.size == 2 || pathSegments.size == 3) {
         CheckResult.Success("https://api.github.com/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/")
-    } else if (pathSegments.size == 4) {
+    } else if (pathSegments.size == 4 && pathSegments[2] == "tree") {
         CheckResult.Success("https://api.github.com/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/${pathSegments[3]}")
     } else {
         CheckResult.Error("Malformed URL.")
     }
+}
+
+fun download(projectName: String, url: String) : File   {
+    val archive = Files.createTempFile(projectName, "tar.gz").toFile()
+    HttpRequests.request(url).productNameAsUserAgent().saveToFile(archive, null)
+    return archive
 }
 
 class GithubSourceSettings(changeListener: () -> Unit) : JPanel(GridBagLayout()) {
