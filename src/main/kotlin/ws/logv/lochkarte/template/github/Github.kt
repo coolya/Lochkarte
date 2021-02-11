@@ -30,7 +30,7 @@ import java.nio.file.attribute.PosixFilePermission
 
 class GithubSourceTemplate : OtherProjectTemplate {
     private val settings = GithubSourceSettings { this.fireSettingsChanged() }
-    val logger = Logger.getInstance("ws.logv.lochkarte.template.github")
+    private val logger = Logger.getInstance("ws.logv.lochkarte.template.github")
 
     override fun getIcon(): Icon? {
         return AllIcons.Nodes.IdeaProject
@@ -124,12 +124,19 @@ fun checkUrl(url: String): CheckResult {
     if (pathSegments.size < 2) {
         return CheckResult.Error("Url seems not to point to a repository.")
     }
+    val hostPart = if(parsedUrl.host == "github.com") {
+        "api.github.com"
+    } else {
+        //github enterprise hosts the api on the same host but the with api/v3 prefix
+        // https://docs.github.com/en/enterprise-server@3.0/rest/reference/enterprise-admin
+        "${parsedUrl.host}/api/v3"
+    }
 
     // third segment is ignored, the fourth is usually the branch name.
     return if (pathSegments.size == 2 || pathSegments.size == 3) {
-        CheckResult.Success("https://api.github.com/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/")
+        CheckResult.Success("https://$hostPart/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/")
     } else if (pathSegments.size == 4 && pathSegments[2] == "tree") {
-        CheckResult.Success("https://api.github.com/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/${pathSegments[3]}")
+        CheckResult.Success("https://$hostPart/repos/${pathSegments[0]}/${pathSegments[1]}/tarball/${pathSegments[3]}")
     } else {
         CheckResult.Error("Malformed URL.")
     }
