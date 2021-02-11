@@ -17,6 +17,12 @@ Templates are just normal MPS projects. You don't need to do anything special to
 
 ### Hosted Templates
 
+In addition to using local projects as a template, hosting templates on Github is supported. Github Enterprise is also 
+supported but not tested much. Only repositories that do not require authentication are supported that means no private
+repositories or Github Enterprise instances with mandatory authentication. 
+
+If you want to use such a repository as a template close the repository yourself and then use it as a local template.
+
 ### Macros
 
 The plugin has very basic support for using macros within the template. Macros are replaced with their value after the
