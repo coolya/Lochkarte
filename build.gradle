@@ -14,7 +14,7 @@ repositories {
     }
 }
 
-def mpsVersion = "2020.1.7"
+def mpsVersion = "2020.2.+"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
@@ -29,8 +29,9 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version '2019.3'
-    plugins 'jetbrains.mps.core:2019.3.6'
+    version '2020.2'
+    type "MPS"
+    plugins 'jetbrains.mps.core:2020.2'
     pluginsRepo { marketplace() }
 }
 
@@ -46,7 +47,6 @@ patchPluginXml {
     changeNotes """
       Add change notes here.<br>
       <em>most HTML tags may be used</em>"""
-    untilBuild(null)
 }
 test {
     useJUnitPlatform()

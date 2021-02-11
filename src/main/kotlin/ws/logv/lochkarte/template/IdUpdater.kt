@@ -36,7 +36,7 @@ fun updateIds(project: Project) {
             val folder = project.getFolderFor(sModule)
             replacedModules.add(moduleName)
             replacedModels.addAll(sModule.models.map { it.reference.modelName })
-            val newModule = cloneModule(sModule as AbstractModule, mpsProject)!!
+            var newModule = cloneModule(sModule as AbstractModule, mpsProject)!!
             sModule.models.forEach { oldModel ->
                 val substitute = newModule.models.find { it.name.simpleName == oldModel.name.simpleName }
                 if (substitute == null) {
@@ -48,8 +48,7 @@ fun updateIds(project: Project) {
             logger.info("deleting original modules")
             deleteModule(sModule, mpsProject)
             logger.info("renaming module copy")
-            @Suppress("DEPRECATION")
-            Renamer.renameModule(newModule, moduleName, mpsProject)
+            newModule = Renamer(mpsProject).renameModule(newModule, moduleName)
             project.setFolderFor(newModule, folder)
         } catch (t: Throwable) {
             logger.error("error updating module ${sModule.moduleName}", t)
