@@ -2,6 +2,7 @@ package ws.logv.lochkarte.template
 
 import com.ibm.icu.text.CharsetDetector
 import com.intellij.openapi.project.Project
+import java.io.BufferedInputStream
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.CopyOption
@@ -61,7 +62,7 @@ fun replaceMacros(project: Project) {
 
 fun replaceMacrosInFile(it: File, macros: Map<String, String>) {
     val detector = CharsetDetector()
-    detector.setText(it.inputStream())
+    detector.setText(BufferedInputStream(it.inputStream()))
     val charsetMatch = detector.detect()
     val reader = charsetMatch.reader
     val tempFile = File.createTempFile(it.nameWithoutExtension, it.extension)
