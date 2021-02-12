@@ -7,6 +7,8 @@ import jetbrains.mps.project.MPSExtentions
 import jetbrains.mps.project.MPSProject
 import jetbrains.mps.project.StandaloneMPSProject
 import jetbrains.mps.project.structure.project.ModulePath
+import jetbrains.mps.project.structure.project.ProjectDescriptor
+import jetbrains.mps.vfs.FileSystems
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.jetbrains.mps.openapi.module.SModule
@@ -18,89 +20,106 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 
+private val logger = Logger.getInstance("ws.logv.lochkarte")
+
 fun fillProject(mpsProject: MPSProject, templateLocation: String) {
-    val startupManager = StartupManager.getInstance(mpsProject.project)
     val minedModulePaths = mutableListOf<ModulePath>()
-    startupManager.registerPostStartupActivity {
-        mpsProject.modelAccess.executeCommand {
-            val projectRoot = mpsProject.projectFile
-            val templateRoot = File(templateLocation)
-            templateRoot.walk().forEach {
-                if (it.path.contains(File.separator + ".git" + File.separator)
-                    || it.isMpsProjectFile("modules.xml")
-                    || it.isMpsProjectFile("workspace.xml")
-                    || it.isDirectory
-                ) {
-                    return@forEach
-                }
-
-                it.copyTo(File(projectRoot, it.toRelativeString(templateRoot)))
+    mpsProject.modelAccess.executeCommandInEDT {
+        val projectRoot = mpsProject.projectFile
+        val templateRoot = File(templateLocation)
+        templateRoot.walk().forEach {
+            if (it.path.contains(File.separator + ".git" + File.separator)
+                || it.isMpsProjectFile("modules.xml")
+                || it.isMpsProjectFile("workspace.xml")
+                || it.isDirectory
+            ) {
+                return@forEach
             }
+            try {
+                it.copyTo(File(projectRoot, it.toRelativeString(templateRoot)))
+            } catch (e: Exception) {
+                logger.error("can't copy file", e)
+            }
+        }
 
-            val extensions = listOf(
-                MPSExtentions.DEVKIT,
-                MPSExtentions.GENERATOR,
-                MPSExtentions.LANGUAGE,
-                MPSExtentions.SOLUTION
-            )
-            projectRoot.walk()
-                .filter { !it.isDirectory && it.extension.isNotEmpty() && extensions.contains(it.extension.toLowerCase()) }
-                .forEach {
-                    val modulePath = ModulePath(it.path, null)
-                    minedModulePaths.add(modulePath)
-                    (mpsProject as StandaloneMPSProject).projectDescriptor.addModulePath(modulePath)
+        // project update and module loading happens async after the module is added to the project
+        // we need to unblock the current thread to continue project loading
+        // Since there is no API to listen for #Project.update to complete we listen for the module added
+        // events until all modules we copied are added and then start the id update.
+        mpsProject.repository.addRepositoryListener(object : SRepositoryListener {
+            override fun moduleAdded(module: SModule) {
+
+                if (module is AbstractModule) {
+                    minedModulePaths.removeIf { it.path == module.descriptorFile?.path }
                 }
 
-            // project update and module loading happens async after the module is added to the project
-            // we need to unblock the current thread to continue project loading
-            // Since there is no API to listen for #Project.update to complete we listen for the module added
-            // events until all modules we copied are added and then start the id update.
-            mpsProject.repository.addRepositoryListener(object : SRepositoryListener {
-                override fun moduleAdded(module: SModule) {
-
-                    if (module is AbstractModule) {
-                        minedModulePaths.removeIf { it.path == module.descriptorFile?.path }
-                    }
-
-                    if (minedModulePaths.isEmpty()) {
-                        mpsProject.repository.removeRepositoryListener(this)
-                        mpsProject.modelAccess.runWriteAction {
-                            mpsProject.modelAccess.executeCommandInEDT {
-                                replaceMacros(mpsProject.project)
-                                updateIds(mpsProject)
-                            }
+                if (minedModulePaths.isEmpty()) {
+                    mpsProject.repository.removeRepositoryListener(this)
+                    mpsProject.modelAccess.runWriteAction {
+                        mpsProject.modelAccess.executeCommandInEDT {
+                            replaceMacros(mpsProject.project)
+                            updateIds(mpsProject)
                         }
                     }
                 }
+            }
 
-                override fun beforeModuleRemoved(module: SModule) {
-                    //noop
-                }
-                override fun moduleRemoved(module: SModuleReference) {
-                    //noop
-                }
-                override fun commandStarted(repository: SRepository?) {
-                    //noop
-                }
-                override fun commandFinished(repository: SRepository?) {
-                    //noop
-                }
-                override fun updateStarted(repository: SRepository?) {
-                    //noop
-                }
-                override fun updateFinished(repository: SRepository?) {
-                    //noop
-                }
-                override fun repositoryCommandStarted(repository: SRepository?) {
-                    //noop
-                }
-                override fun repositoryCommandFinished(repository: SRepository?) {
-                    //noop
-                }
-            })
-            (mpsProject as StandaloneMPSProject).update()
-        }
+            override fun beforeModuleRemoved(module: SModule) {
+                //noop
+            }
+
+            override fun moduleRemoved(module: SModuleReference) {
+                //noop
+            }
+
+            override fun commandStarted(repository: SRepository?) {
+                //noop
+            }
+
+            override fun commandFinished(repository: SRepository?) {
+                //noop
+            }
+
+            override fun updateStarted(repository: SRepository?) {
+                //noop
+            }
+
+            override fun updateFinished(repository: SRepository?) {
+                //noop
+            }
+
+            override fun repositoryCommandStarted(repository: SRepository?) {
+                //noop
+            }
+
+            override fun repositoryCommandFinished(repository: SRepository?) {
+                //noop
+            }
+        })
+
+        val extensions = listOf(
+            MPSExtentions.DEVKIT,
+            MPSExtentions.GENERATOR,
+            MPSExtentions.LANGUAGE,
+            MPSExtentions.SOLUTION
+        )
+        val projectDescriptor = ProjectDescriptor(mpsProject.name)
+        projectRoot.walk()
+            .filter { !it.isDirectory && it.extension.isNotEmpty() && extensions.contains(it.extension.toLowerCase()) }
+            .forEach {
+                val modulePath = ModulePath(it.path, null)
+                // workaround to trigger a vfs refresh because update on the project doesn't trigger a
+                // refresh in the VFS and will therefore discard the module path because it thinks it
+                // does not exit.
+                val vfsFile = FileSystems.getDefault().getFile(it.path)
+                vfsFile.mkdirs()
+                minedModulePaths.add(modulePath)
+                projectDescriptor.addModulePath(modulePath)
+            }
+
+        (mpsProject as StandaloneMPSProject).projectDescriptor = projectDescriptor
     }
+
 }
 
 private fun File.isMpsProjectFile(name: String) = this.path.contains(File.separator + ".mps" + File.separator + name)
@@ -137,7 +156,7 @@ fun extractArchive(archive: File, destination: File, logger: Logger? = null) {
         } else {
             val file = File(destination, entry.name)
             val parentFile = file.parentFile
-            if(!parentFile.exists()) {
+            if (!parentFile.exists()) {
                 val created = parentFile.mkdirs()
                 if (!created) {
                     logger?.error("can't create file: ${parentFile.path}")

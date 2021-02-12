@@ -59,7 +59,10 @@ class LocalFileSourceTemplate : OtherProjectTemplate {
         val locationPath = settings.templateLocationPath
         val location = File(locationPath)
         if (location.exists()) {
-            return "Template not compatible: \n" + ws.logv.lochkarte.helper.checkTemplate(location).joinToString("\n")
+            val checkResult = ws.logv.lochkarte.helper.checkTemplate(location)
+            if (checkResult.isNotEmpty()) {
+                return "Template not compatible: \n" + checkResult.joinToString("\n")
+            }
         }
         return null
     }
@@ -70,7 +73,10 @@ class LocalFileSourceTemplate : OtherProjectTemplate {
 
     override fun getTemplateFiller(): TemplateFiller {
         return TemplateFiller { mpsProject ->
-            fillProject(mpsProject, settings.templateLocationPath)
+            val startupManager = StartupManager.getInstance(mpsProject.project)
+            startupManager.runAfterOpened {
+                fillProject(mpsProject, settings.templateLocationPath)
+            }
         }
     }
 

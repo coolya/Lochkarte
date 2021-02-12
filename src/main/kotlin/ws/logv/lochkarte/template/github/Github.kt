@@ -55,12 +55,12 @@ class GithubSourceTemplate : OtherProjectTemplate {
         return TemplateFiller { mpsProject ->
 
             val startupManager = StartupManager.getInstance(mpsProject.project)
-            startupManager.registerStartupActivity {
+            startupManager.runAfterOpened {
                 // we should never end up in the error case here because checkSettings is invoked prior to
                 // creating the project and will block project creation if an error message is returned.
                 // This is why we don't bother to inform the user.
                 val url = when (val checkResult = checkUrl(settings.templateUrl)) {
-                    is CheckResult.Error -> return@registerStartupActivity
+                    is CheckResult.Error -> return@runAfterOpened
                     is CheckResult.Success -> checkResult.url
                 }
 
@@ -78,7 +78,7 @@ class GithubSourceTemplate : OtherProjectTemplate {
                         |
                         |Only an empty project has been created.""".trimMargin(), "Error Downloading Template"
                     )
-                    return@registerStartupActivity
+                    return@runAfterOpened
                 }
 
                 val tempDirectory = Files.createTempDirectory("template").toFile()

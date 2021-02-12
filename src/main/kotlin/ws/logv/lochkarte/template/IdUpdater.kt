@@ -20,7 +20,7 @@ import org.jetbrains.mps.openapi.model.SModelId
 import org.jetbrains.mps.openapi.model.SModelReference
 import kotlin.test.fail
 
-private val logger = Logger.getInstance("ws.logv.lochkarte.template.updateIds")
+private val logger = Logger.getInstance("ws.logv.lochkarte")
 
 fun updateIds(project: Project) {
     val replacedModules = mutableListOf<String>()
