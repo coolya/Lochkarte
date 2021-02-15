@@ -32,7 +32,7 @@ class GithubSourceTemplate : OtherProjectTemplate {
     private val settings = GithubSourceSettings { this.fireSettingsChanged() }
     private val logger = Logger.getInstance("ws.logv.lochkarte.template.github")
 
-    override fun getIcon(): Icon? {
+    override fun getIcon(): Icon {
         return AllIcons.Nodes.IdeaProject
     }
 
@@ -56,9 +56,11 @@ class GithubSourceTemplate : OtherProjectTemplate {
 
             val startupManager = StartupManager.getInstance(mpsProject.project)
             startupManager.runAfterOpened {
-                // we should never end up in the error case here because checkSettings is invoked prior to
-                // creating the project and will block project creation if an error message is returned.
-                // This is why we don't bother to inform the user.
+                /*
+                we should never end up in the error case here because checkSettings is invoked prior to
+                creating the project and will block project creation if an error message is returned.
+                This is why we don't bother to inform the user.
+                */
                 val url = when (val checkResult = checkUrl(settings.templateUrl)) {
                     is CheckResult.Error -> return@runAfterOpened
                     is CheckResult.Success -> checkResult.url
@@ -89,14 +91,16 @@ class GithubSourceTemplate : OtherProjectTemplate {
     }
 
     override fun checkSettings(): String? {
-        // ideally we would like to probe the url here to check if the url is indeed a
-        // github instance. We can't do this because "checkSettings" is invoked on the AWT event queue
-        // and network requests on that thread would block the UI.
-        // Going to send a PR to MPS that will allow checking outside of AWT but this won't be available
-        // until at last 2021.1
-        // We can't only check by hostname because  for github enterprise
-        // this could be any other hostname than github.com. There is also no way present a
-        // warning to the user from an extension.
+        /*
+        ideally we would like to probe the url here to check if the url is indeed a
+        github instance. We can't do this because "checkSettings" is invoked on the AWT event queue
+        and network requests on that thread would block the UI.
+        Going to send a PR to MPS that will allow checking outside of AWT but this won't be available
+        until at last 2021.1
+        We can't only check by hostname because  for github enterprise
+        this could be any other hostname than github.com. There is also no way present a
+        warning to the user from an extension.
+        */
         return when (val checkResult = checkUrl(settings.templateUrl)) {
             is CheckResult.Error -> checkResult.message
             is CheckResult.Success -> null
