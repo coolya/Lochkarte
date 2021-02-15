@@ -55,3 +55,6 @@ updating the ids. What this plugin does behind the scenes is, create a copy of t
 and then rename the copy to the original name. This is required because changing the descriptor, which contain the id,
 after a module has been loaded doesn't work. During the renaming and deletion handling solution that are nested into a
 language folder doesn't work right now.
+
+If the template contains any `DevKit`s these aren't handled at all and will produce duplicate 
+ids for the `DevKit`. See #5
