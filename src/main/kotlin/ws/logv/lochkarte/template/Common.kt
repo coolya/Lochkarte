@@ -56,7 +56,7 @@ fun fillProject(mpsProject: MPSProject, templateLocation: String) {
 
         /*
         project update and module loading happens async after the module is added to the project
-        we need to unblock the current thread to continue project loading
+        we need to unblock the current thread to continue project loading.
         Since there is no API to listen for #Project.update to complete we listen for the module added
         events until all modules we copied are added and then start the id update.
         */
