@@ -20,7 +20,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
-        run: ./gradlew buildPlugin runPluginVerifier -Prelease-version=${{ github.ref }}
+        run: ./gradlew buildPlugin -Prelease-version=${{ github.ref }}
       - name: Artifacts Upload
         uses: actions/upload-artifact@v2
         with:
