@@ -166,6 +166,7 @@ fun extractArchive(archive: File, destination: File, logger: Logger? = null) {
     val tarArchiveInputStream = TarArchiveInputStream(gzipCompressorInputStream)
     var entry = tarArchiveInputStream.nextTarEntry
     while (entry != null) {
+
         if (entry.isDirectory) {
             val directory = File(destination, entry.name)
             val created = directory.mkdirs()
@@ -178,7 +179,7 @@ fun extractArchive(archive: File, destination: File, logger: Logger? = null) {
             val permissions =
                 BitMaskFilePermission.values().filter { it.permitted(mode) }.map { it.filePermission }
             Files.setPosixFilePermissions(directory.toPath(), HashSet(permissions))
-        } else {
+        } else if (entry.isFile && !(entry.isGlobalPaxHeader)) {
             val file = File(destination, entry.name)
             val parentFile = file.parentFile
             if (!parentFile.exists()) {

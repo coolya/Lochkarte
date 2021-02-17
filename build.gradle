@@ -26,13 +26,14 @@ repositories {
     }
 }
 
-def mpsVersion = "2020.2.+"
+def mpsVersion = "2020.3.+"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
     compileOnly "com.jetbrains:mps-openapi:$mpsVersion"
     compileOnly "com.jetbrains:mps-platform:$mpsVersion"
     compileOnly "com.jetbrains:mps-workbench:$mpsVersion"
+    compileOnly "com.jetbrains:mps-core:$mpsVersion"
     implementation "com.ibm.icu:icu4j:68.2"
     implementation "org.apache.commons:commons-compress:1.2"
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
@@ -41,14 +42,13 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version '2020.2'
+    version '2020.3'
     type "MPS"
-    plugins 'jetbrains.mps.core:2020.2'
     pluginsRepo { marketplace() }
 }
 
 runPluginVerifier {
-    ideVersions = ["MPS-2020.2.3"]
+    ideVersions = ["MPS-2020.3.1", "MPS-2020.3"]
 }
 
 compileKotlin {
